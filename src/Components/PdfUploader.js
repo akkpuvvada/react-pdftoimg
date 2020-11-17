@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import ImageDisplay from './ImageDisplay';
 
 var pdftoimg
-var imageData
+var imageData=[]
 
 //
 // Functionality: Allows user to upload the pdf files and generates the images of evey single page
@@ -40,10 +40,15 @@ export default class PdfUploader extends Component {
         let fileReader = new FileReader();
         this.setState({fileLoaded:false})
         fileReader.onload = function (data) {
-            pdftoimg.getDocument(fileReader.result).then((pdf) => {
-                pdf.getPage(1).then((page) => {
-                    renderPage(page)
-                });
+            var typedarray = new Uint8Array(this.result);
+            pdftoimg.getDocument(typedarray).promise.then((pdf) => {
+                let numOfPages = pdf.numPages
+                console.log(numOfPages)
+                for (let i =0;i<numOfPages;i++){
+                    pdf.getPage(1).then((page) => {
+                        renderPage(page)
+                    });
+                }
             });
         };
         fileReader.readAsArrayBuffer(file);
@@ -51,32 +56,32 @@ export default class PdfUploader extends Component {
 
     //Render the pdf data on canvas
     renderPage = (page) => {
-        var scale = 1.5;
-        var viewport = page.getViewport(scale);
-
+        console.log("in e")
+        var scale = 2.5;
+        var filesaver = require('blob');
+        var canvas = document.createElement("canvas");
+        var viewport = page.getViewport({ scale: scale, });
+        var context = canvas.getContext('2d');
         //
         // Prepare canvas using PDF page dimensions
         //
-
-        var canvas = this.refs.canvas;
-        var context = canvas.getContext('2d');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        var filesaver = require('blob');
 
-        //
-        // Render PDF page into canvas context
-        //
-
-        var task = page.render({ canvasContext: context, viewport: viewport })
+        var renderContext = {
+            canvasContext: context,
+            viewport: viewport
+        };
+        let task = page.render(renderContext)
         task.promise.then(() => {
 
             canvas.toBlob((image) => {
-                imageData = new filesaver([image, { type: 'image/jpeg' }])
+                imageData.push(new filesaver([image, { type: 'image/jpeg' }]))
                 this.setState({ fileLoaded: true })
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.beginPath();
             })
         });
-
 
     }
 
@@ -87,13 +92,11 @@ export default class PdfUploader extends Component {
                     name="imgUpload"
                     accept='.pdf'
                     onChange={this.getFile} />
-                    {/* First display the canvas to display pdf data till image is saved 
-                    then display the images generated */}
-                {this.state.fileLoaded ?
-                    <ImageDisplay imageData={imageData} /> // Implementation to display the image from blob object 
-                    :
-                    <canvas name="canvas" ref="canvas" />
-                }
+                    {this.state.fileLoaded &&
+                    imageData.map((image)=>{
+                        return <ImageDisplay imageData={image} /> // Implementation to display the image from blob object 
+                    })
+                    }
             </div>
         )
     }

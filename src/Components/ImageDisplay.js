@@ -13,7 +13,10 @@ function ImageDisplay(props) {
   }
 
     return (
-        <img src={imageUrl} alt="PDF not loaded"/>
+        <img
+         className="pdf"  
+         src={imageUrl} 
+         alt="PDF not loaded"/>
     );
   }
 
